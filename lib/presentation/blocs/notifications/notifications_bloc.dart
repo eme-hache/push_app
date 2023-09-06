@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:push_app/firebase_options.dart';
+import 'package:push_app/domain/entities/push_message.dart';
 
 part 'notifications_event.dart';
 part 'notifications_state.dart';
@@ -17,6 +19,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc() : super(const NotificationsState()) {
     on<NotificationStatusChanged>(_notificationStatusChanged);
+    on<NotificationReceived>(_onPushMessageReceived);
 
     // Verify notification status
     _initialStatusCheck();
@@ -43,6 +46,14 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     _getFCMToken();
   }
 
+  void _onPushMessageReceived(NotificationReceived event, Emitter<NotificationsState> emit) {
+    emit(
+      state.copyWith(
+        notifications: [event.pushMessage, ...state.notifications]
+      )
+    );
+  }
+
   void _initialStatusCheck () async {
     final settings = await messaging.getNotificationSettings();
 
@@ -59,11 +70,20 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   }
 
   void _handleRemoteMessage(RemoteMessage message) {
-    print('Message data: ${message.data}');
-
     if (message.notification == null) return;
+    
+    final notification = PushMessage(
+      messageId: message.messageId?.replaceAll(':', '').replaceAll('%', '')  ?? '', 
+      title: message.notification!.title ?? '', 
+      body: message.notification!.body ?? '', 
+      sentDate: message.sentTime ?? DateTime.now(),
+      data: message.data,
+      imageUrl: Platform.isAndroid 
+        ? message.notification!.android?.imageUrl 
+        : message.notification!.apple?.imageUrl
+    );
 
-    print('Message noti: ${message.notification}');
+    add(NotificationReceived(notification));
   }
 
   void _onForegroundMessage() {
