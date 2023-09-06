@@ -4,17 +4,23 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:push_app/config/router/app_router.dart';
 import 'package:push_app/config/theme/app_theme.dart';
+import 'package:push_app/config/local_notifications/local_notifications.dart';
 import 'package:push_app/presentation/blocs/notifications/notifications_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   await NotificationsBloc.initializeFCM();
+  await LocalNotifications.initializeLocalNotifications();
 
   runApp(MultiBlocProvider(
     providers: [
       BlocProvider(
-        create: (context) => NotificationsBloc(),
+        create: (context) => NotificationsBloc(
+            requestLocalNotificationPermissions:
+                LocalNotifications.requestPermissionLocalNotifications,
+            showLocalNotification: LocalNotifications.showLocalNotification),
       )
     ],
     child: const MainApp(),
@@ -30,7 +36,8 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme().getTheme(),
       routerConfig: appRouter,
-      builder: (context, child) => HandleNotificationInteractions(child: child!),
+      builder: (context, child) =>
+          HandleNotificationInteractions(child: child!),
     );
   }
 }
@@ -41,11 +48,12 @@ class HandleNotificationInteractions extends StatefulWidget {
   final Widget child;
 
   @override
-  State<HandleNotificationInteractions> createState() => _HandleNotificationInteractionsState();
+  State<HandleNotificationInteractions> createState() =>
+      _HandleNotificationInteractionsState();
 }
 
-class _HandleNotificationInteractionsState extends State<HandleNotificationInteractions> {
-
+class _HandleNotificationInteractionsState
+    extends State<HandleNotificationInteractions> {
   // It is assumed that all messages contain a data field with the key 'type'
   Future<void> setupInteractedMessage() async {
     // Get any messages which caused the application to open from
@@ -63,11 +71,12 @@ class _HandleNotificationInteractionsState extends State<HandleNotificationInter
     // Stream listener
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
-  
+
   void _handleMessage(RemoteMessage message) {
     context.read<NotificationsBloc>().handleRemoteMessage(message);
 
-    final messageId = message.messageId?.replaceAll(':', '').replaceAll('%', '');
+    final messageId =
+        message.messageId?.replaceAll(':', '').replaceAll('%', '');
 
     appRouter.push('/push-details/$messageId');
   }
