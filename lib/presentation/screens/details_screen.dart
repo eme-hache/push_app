@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:push_app/domain/entities/push_message.dart';
 import 'package:push_app/presentation/blocs/notifications/notifications_bloc.dart';
 
